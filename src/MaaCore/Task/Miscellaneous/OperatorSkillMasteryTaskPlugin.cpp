@@ -2,7 +2,6 @@
 
 #include "Controller/Controller.h"
 #include "Task/ProcessTask.h"
-#include "Utils/InstHelper.hpp"
 #include "Utils/Logger.hpp"
 
 namespace asst {
@@ -15,8 +14,6 @@ bool OperatorSkillMasteryTaskPlugin::_run()
         Log.info("OperatorSkillMastery: queue empty");
         return true;
     }
-
-    auto helper = InstHelper{ ctrler() };
 
     while (!m_queue.empty() && !need_exit()) {
         auto item = m_queue.front();
