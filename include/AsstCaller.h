@@ -130,6 +130,15 @@ extern "C"
     AsstSize ASSTAPI AsstGetTasksList(AsstHandle handle, AsstTaskId* buff, AsstSize buff_size);
     AsstSize ASSTAPI AsstGetNullSize();
 
+    // 离线识别评估：不连设备，对一张静态截图（image_path）跑单个 pipeline 节点（task_name）的识别，结果为 JSON 字符串
+    // buff == nullptr 时返回所需长度（含结尾 '\0'）；buff_size 不足时返回 NullSize；成功时写入内容并返回长度（含结尾 '\0'）
+    AsstSize ASSTAPI AsstEvalTaskNode(
+        AsstHandle handle,
+        const char* task_name,
+        const char* image_path,
+        char* buff,
+        AsstSize buff_size);
+
     ASSTAPI_PORT const char* ASST_CALL AsstGetVersion();
     void ASSTAPI AsstLog(const char* level, const char* message);
 

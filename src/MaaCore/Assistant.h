@@ -1,6 +1,7 @@
 #pragma once
 
 #include <condition_variable>
+#include <filesystem>
 #include <future>
 #include <list>
 #include <memory>
@@ -118,6 +119,9 @@ public:
     virtual std::vector<TaskId> get_tasks_list() const override;
 
     virtual bool back_to_home() const override;
+
+    // 离线识别评估：不连设备，对一张静态截图跑单个 pipeline 节点的识别，返回 JSON 字符串
+    std::string eval_task_node(const std::string& task_name, const std::filesystem::path& image_path);
 
 public:
     std::shared_ptr<Controller> ctrler() const { return m_ctrler; }
