@@ -80,7 +80,7 @@
         "doc": "找目标干员名（当前写死赤刃明霄陈）并点击卡片。继承上游干员名 OCR 纠错表（fullMatch）",
         "text": ["赤刃明霄陈"],
         "action": "ClickSelf",
-        "roi": [80, 330, 1140, 400],
+        "roi": [80, 330, 1140, 390],
         "next": ["AutoRaise@OperFiles"]
     },
     "AutoRaise@SwipeNextPage": {
