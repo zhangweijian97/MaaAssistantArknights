@@ -108,7 +108,7 @@
         "next": ["AutoRaise@LevelUpPageEnter"]
     },
     "AutoRaise@LevelUpPageEnter": {
-        "template": "AutoRaise/OperFilesEnterLevelUpButton.png",
+        "template": "OperFilesEnterLevelUpButton.png",
         "action": "ClickSelf",
         "roi": [1147, 109, 103, 70],
         "postDelay": 500,
@@ -116,14 +116,14 @@
         "next": ["AutoRaise@LevelUpPanelReached", "AutoRaise@CannotEnterLevelUpPage"]
     },
     "AutoRaise@LevelUpPanelReached": {
-        "template": "AutoRaise/LevelUpPageSelectMax.png",
+        "template": "LevelUpPageSelectMax.png",
         "roi": [1035, 117, 171, 127],
         "action": "DoNothing",
         "doc": "升级面板到达标志：借选满按钮当面板特征。MVP 到进面板为止，不点选满——面板内操作（选目标等级）待探讨定案",
         "next": []
     },
     "AutoRaise@CannotEnterLevelUpPage": {
-        "template": "AutoRaise/OperFilesCannotEnterLevelUpPage.png",
+        "template": "OperFilesCannotEnterLevelUpPage.png",
         "roi": [1041, 533, 162, 143],
         "doc": "点了升级但没进面板（可能已满级/二次确认弹窗遮挡），静默结束（lancarus 同款兜底）",
         "next": []
