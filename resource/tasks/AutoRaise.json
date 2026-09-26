@@ -1,0 +1,131 @@
+{
+    "AutoRaise@EnterOperBox": {
+        "algorithm": "JustReturn",
+        "doc": "第1段：进干员列表。复用上游 OperBoxBegin 入口链（含皮肤主题变体与多种中间页面状态），到达列表页后上游链自然终止。起点假设=游戏主界面（首跑用户手动保证）",
+        "next": ["OperBoxBegin"]
+    },
+    "AutoRaise@FilterRole": {
+        "algorithm": "JustReturn",
+        "doc": "第2段：职业栏三态归一 -> 选 ALL 重置滚动 -> 选目标职业 -> 收起确认。起点=干员列表页。三态依次尝试（lancarus 顺序：筛选残留只能 OCR 点开，模板与收起>互误匹配）",
+        "next": [
+            "AutoRaise@OperBoxRoleFilteredOpen",
+            "AutoRaise@RoleBarExpand",
+            "AutoRaise@OperBoxRoleBarOpened"
+        ]
+    },
+    "AutoRaise@OperBoxRoleFilteredOpen": {
+        "algorithm": "OcrDetect",
+        "text": ["先锋", "近卫", "重装", "狙击", "术师", "医疗", "辅助", "特种"],
+        "roi": [1152, 0, 128, 138],
+        "action": "ClickSelf",
+        "postDelay": 500,
+        "doc": "筛选残留态：右上角为职业名▼，OCR 点击展开",
+        "next": ["AutoRaise@SelectAll"],
+        "onErrorNext": ["AutoRaise@SelectAllOcr"]
+    },
+    "AutoRaise@RoleBarExpand": {
+        "baseTask": "BattleQuickFormationExpandRole",
+        "template": "BattleQuickFormationExpandRole.png",
+        "doc": "无筛选态：右上角为 职业≡ 模板，点击展开。onErrorNext 语义=我成功后 next（SelectAll）全灭时的退路（引擎取最后成功节点的 onErrorNext，ProcessTask.cpp:145）",
+        "next": ["AutoRaise@SelectAll"],
+        "onErrorNext": ["AutoRaise@SelectAllOcr"]
+    },
+    "AutoRaise@OperBoxRoleBarOpened": {
+        "template": "BattleQuickFormationCollapseRole.png",
+        "roi": [1152, 0, 128, 138],
+        "action": "DoNothing",
+        "doc": "已展开态：右上角为 收起>，无需操作",
+        "next": ["AutoRaise@SelectAll"],
+        "onErrorNext": ["AutoRaise@SelectAllOcr"]
+    },
+    "AutoRaise@SelectAll": {
+        "baseTask": "BattleQuickFormationRole-All",
+        "template": "BattleQuickFormationRole-All.png",
+        "templThreshold": 0.65,
+        "doc": "先选 ALL 重置滚动位置。阈值 0.65：列表页 ALL 与编队模板实测 0.6988，上游 0.7 差一丝卡死",
+        "next": ["AutoRaise@SelectWarrior"]
+    },
+    "AutoRaise@SelectAllOcr": {
+        "baseTask": "BattleQuickFormationRole-All-OCR",
+        "doc": "ALL 的 OCR 备选（模板识别失败时顶上）",
+        "next": ["AutoRaise@SelectWarrior"]
+    },
+    "AutoRaise@SelectWarrior": {
+        "baseTask": "BattleQuickFormationRole-Warrior",
+        "template": "BattleQuickFormationRole-Warrior.png",
+        "doc": "选目标职业（当前近卫=赤刃明霄陈）。换干员时同步改本节点与 FindOperator 的 text",
+        "next": ["AutoRaise@CollapseRoleBar"]
+    },
+    "AutoRaise@CollapseRoleBar": {
+        "baseTask": "InfrastCloseQuickFormationExpandRole",
+        "template": "BattleQuickFormationCollapseRole.png",
+        "doc": "收起职业栏（覆盖上游 next=[Stop]），避免遮挡最右侧干员卡片",
+        "next": ["AutoRaise@RoleBarFilteredConfirm"]
+    },
+    "AutoRaise@RoleBarFilteredConfirm": {
+        "algorithm": "OcrDetect",
+        "text": ["先锋", "近卫", "重装", "狙击", "术师", "医疗", "辅助", "特种"],
+        "roi": [1152, 0, 128, 138],
+        "action": "DoNothing",
+        "doc": "收起完成标志：右上角回到已筛选的职业名▼",
+        "next": []
+    },
+    "AutoRaise@LocateOperator": {
+        "algorithm": "JustReturn",
+        "doc": "第3段：翻页定位目标干员 -> 档案页 -> 点升级进面板。页在而目标不在=锚点分支一帧定夺立即翻页；两者都看不到=前提被破坏，走引擎重试后诚实失败。20 页上限兜底（lancarus MaxOperatorPages 同值）",
+        "next": ["AutoRaise@FindOperator", "AutoRaise@ListPageAnchor"]
+    },
+    "AutoRaise@FindOperator": {
+        "baseTask": "CharsNameOcrReplace",
+        "doc": "找目标干员名（当前写死赤刃明霄陈）并点击卡片。继承上游干员名 OCR 纠错表（fullMatch）",
+        "text": ["赤刃明霄陈"],
+        "action": "ClickSelf",
+        "roi": [80, 330, 1140, 400],
+        "next": ["AutoRaise@OperFiles"]
+    },
+    "AutoRaise@SwipeNextPage": {
+        "baseTask": "OperBoxSlowlySwipeToTheRight",
+        "doc": "翻一页后回到同帧判定：目标在→点进；页在目标不在→锚点再翻。postDelay 800 等列表停稳（上游基任务仅 200）。maxTimes=20 页上限",
+        "next": ["AutoRaise@FindOperator", "AutoRaise@ListPageAnchor"],
+        "postDelay": 800,
+        "maxTimes": 20
+    },
+    "AutoRaise@ListPageAnchor": {
+        "algorithm": "OcrDetect",
+        "doc": "列表页锚点：稀有度表头（本帧 OCR 0.999 实证、位置固定）。页在而目标不在→立即翻页，替代旧的烧满 21 帧重试预算再翻页",
+        "text": ["稀有度"],
+        "roi": [900, 5, 200, 70],
+        "action": "DoNothing",
+        "next": ["AutoRaise@SwipeNextPage"]
+    },
+    "AutoRaise@OperFiles": {
+        "baseTask": "OperOpenInformationMenu",
+        "template": "OperInformationMenu.png",
+        "maxTimes": 20,
+        "preDelay": 1000,
+        "action": "DoNothing",
+        "doc": "档案页（干员详情）到达标志：信息档案按钮。preDelay 等页面渲染（lancarus 同款）",
+        "next": ["AutoRaise@LevelUpPageEnter"]
+    },
+    "AutoRaise@LevelUpPageEnter": {
+        "template": "AutoRaise/OperFilesEnterLevelUpButton.png",
+        "action": "ClickSelf",
+        "roi": [1147, 109, 103, 70],
+        "postDelay": 500,
+        "doc": "点升级按钮进升级面板（roi/模板=lancarus 原值）",
+        "next": ["AutoRaise@LevelUpPanelReached", "AutoRaise@CannotEnterLevelUpPage"]
+    },
+    "AutoRaise@LevelUpPanelReached": {
+        "template": "AutoRaise/LevelUpPageSelectMax.png",
+        "roi": [1035, 117, 171, 127],
+        "action": "DoNothing",
+        "doc": "升级面板到达标志：借选满按钮当面板特征。MVP 到进面板为止，不点选满——面板内操作（选目标等级）待探讨定案",
+        "next": []
+    },
+    "AutoRaise@CannotEnterLevelUpPage": {
+        "template": "AutoRaise/OperFilesCannotEnterLevelUpPage.png",
+        "roi": [1041, 533, 162, 143],
+        "doc": "点了升级但没进面板（可能已满级/二次确认弹窗遮挡），静默结束（lancarus 同款兜底）",
+        "next": []
+    }
+}
