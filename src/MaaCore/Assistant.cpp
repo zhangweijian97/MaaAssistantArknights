@@ -10,7 +10,9 @@
 #include "Config/Miscellaneous/OcrPack.h"
 #include "Config/OnnxSessions.h"
 #include "Config/ResourceLoader.h"
+#include "Config/TaskData.h"
 #include "Controller/Controller.h"
+#include "MaaUtils/ImageIo.h"
 #include "Status.h"
 #include "Task/Interface/AwardTask.h"
 #include "Task/Interface/CloseDownTask.h"
@@ -32,6 +34,7 @@
 #include "Task/Interface/SwitchThemeTask.h"
 #include "Task/Interface/VideoRecognitionTask.h"
 #include "Utils/Logger.hpp"
+#include "Vision/Miscellaneous/PipelineAnalyzer.h"
 #ifdef ASST_DEBUG
 #include "Task/Interface/DebugTask.h"
 #endif
@@ -422,6 +425,76 @@ std::vector<uchar> asst::Assistant::get_image_bgr() const
 
     std::vector<uchar> buf(img.data, img.data + img.total() * img.elemSize());
     return buf;
+}
+
+std::string asst::Assistant::eval_task_node(const std::string& task_name, const std::filesystem::path& image_path)
+{
+    LogTraceFunction;
+    Log.info(__FUNCTION__, "| task:", task_name, "image:", image_path.string());
+
+    cv::Mat image = MAA_NS::imread(image_path);
+    if (image.empty()) {
+        return json::object { { "ok", false }, { "error", "imread_failed" }, { "image", image_path.string() } }.to_string();
+    }
+
+    TaskConstPtr task_ptr = Task.get(task_name);
+    if (task_ptr == nullptr) {
+        return json::object { { "ok", false }, { "error", "task_not_found" }, { "task", task_name } }.to_string();
+    }
+
+    switch (task_ptr->algorithm) {
+    case AlgorithmType::MatchTemplate:
+    case AlgorithmType::OcrDetect:
+    case AlgorithmType::FeatureMatch:
+        break;
+    default:
+        return json::object {
+            { "ok", true },
+            { "matched", false },
+            { "task", task_name },
+            { "algorithm", enum_to_string(task_ptr->algorithm) },
+            { "note", "algorithm_unsupported_offline" },
+        }.to_string();
+    }
+
+    PipelineAnalyzer analyzer(image, Rect(), this);
+    analyzer.set_tasks({ task_name });
+    auto res_opt = analyzer.analyze();
+
+    if (!res_opt || res_opt->task_ptr == nullptr) {
+        return json::object { { "ok", true }, { "matched", false }, { "task", task_name } }.to_string();
+    }
+
+    json::object result_json;
+    switch (res_opt->task_ptr->algorithm) {
+    case AlgorithmType::MatchTemplate:
+        result_json = std::get<Matcher::Result>(res_opt->result).to_json();
+        break;
+    case AlgorithmType::OcrDetect:
+        result_json = std::get<OCRer::Result>(res_opt->result).to_json();
+        break;
+    case AlgorithmType::FeatureMatch:
+        result_json = std::get<FeatureMatcher::Result>(res_opt->result).to_json();
+        break;
+    default:
+        break;
+    }
+
+    const json::value resp = json::object {
+        { "ok", true },
+        { "matched", true },
+        { "task", res_opt->task_ptr->name },
+        { "algorithm", enum_to_string(res_opt->task_ptr->algorithm) },
+        { "rect", json::array { res_opt->rect.x, res_opt->rect.y, res_opt->rect.width, res_opt->rect.height } },
+        { "roi",
+         json::array {
+             res_opt->task_ptr->roi.x,
+             res_opt->task_ptr->roi.y,
+             res_opt->task_ptr->roi.width,
+             res_opt->task_ptr->roi.height } },
+        { "result", std::move(result_json) },
+    };
+    return resp.to_string();
 }
 
 bool asst::Assistant::connect(const std::string& adb_path, const std::string& address, const std::string& config)

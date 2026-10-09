@@ -317,6 +317,26 @@ AsstSize AsstGetNullSize()
     return NullSize;
 }
 
+AsstSize AsstEvalTaskNode(AsstHandle handle, const char* task_name, const char* image_path, char* buff, AsstSize buff_size)
+{
+    if (!inited() || handle == nullptr || task_name == nullptr || image_path == nullptr) {
+        return NullSize;
+    }
+
+    // AsstHandle 是 AsstExtAPI*（接口）；eval_task_node 只在 Assistant 上，唯一实现即 Assistant
+    const std::string result = static_cast<asst::Assistant*>(handle)->eval_task_node(
+        task_name, std::filesystem::path(image_path));
+    const size_t data_size = result.size() + 1; // 含结尾 '\0'
+    if (buff == nullptr) {
+        return data_size;
+    }
+    if (buff_size < data_size) {
+        return NullSize;
+    }
+    memcpy(buff, result.c_str(), data_size);
+    return data_size;
+}
+
 const char* AsstGetVersion()
 {
     return MAA_VERSION;
